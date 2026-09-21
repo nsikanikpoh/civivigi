@@ -21,7 +21,7 @@ export default function CaseCard({ caseItem, actions }) {
       <p className="case-description">{caseItem.description}</p>
       <div className="case-meta">
         <span>
-          📍 {[caseItem.city, caseItem.region, caseItem.country].filter(Boolean).join(", ")}
+          📍 {[caseItem.province?.name, caseItem.state?.name].filter(Boolean).join(", ")}
         </span>
         <span>🕒 {new Date(caseItem.createdAt).toLocaleString()}</span>
       </div>

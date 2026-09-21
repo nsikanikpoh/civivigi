@@ -1,15 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import api from "../api/api.js";
 
 const CASE_TYPES = ["Robbery", "Kidnapping", "Violence", "Abuse", "Threat"];
 
 export default function ReportIncident() {
+  const [states, setStates] = useState([]);
+  const [loadingStates, setLoadingStates] = useState(true);
   const [form, setForm] = useState({
     type: "",
     description: "",
-    region: "",
-    country: "",
-    city: "",
+    stateId: "",
+    provinceId: "",
     reporterName: "",
     reporterPhone: "",
   });
@@ -18,6 +19,13 @@ export default function ReportIncident() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    api
+      .get("/states", { params: { withProvinces: true } })
+      .then((res) => setStates(res.data.data))
+      .finally(() => setLoadingStates(false));
+  }, []);
 
   function captureLocation() {
     if (!("geolocation" in navigator)) {
@@ -39,16 +47,26 @@ export default function ReportIncident() {
     setForm((f) => ({ ...f, [field]: value }));
   }
 
+  function updateState(stateId) {
+    setForm((f) => ({ ...f, stateId, provinceId: "" }));
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
-    if (!form.type || !form.description || !form.region || !form.country) {
-      setError("Please fill in incident type, description, region and country.");
+    if (!form.type || !form.description || !form.stateId || !form.provinceId) {
+      setError("Please fill in incident type, description, state and province.");
       return;
     }
     setSubmitting(true);
     try {
-      const payload = { ...form };
+      const payload = {
+        type: form.type,
+        description: form.description,
+        province: form.provinceId,
+        reporterName: form.reporterName,
+        reporterPhone: form.reporterPhone,
+      };
       if (coords) {
         payload.latitude = coords.latitude;
         payload.longitude = coords.longitude;
@@ -61,6 +79,9 @@ export default function ReportIncident() {
       setSubmitting(false);
     }
   }
+
+  const selectedState = states.find((s) => s._id === form.stateId);
+  const provinces = selectedState?.provinces || [];
 
   if (result) {
     return (
@@ -109,19 +130,38 @@ export default function ReportIncident() {
 
         <div className="form-row">
           <label>
-            State / Region *
-            <input value={form.region} onChange={(e) => update("region", e.target.value)} />
+            State *
+            <select
+              value={form.stateId}
+              onChange={(e) => updateState(e.target.value)}
+              disabled={loadingStates}
+            >
+              <option value="">{loadingStates ? "Loading…" : "Select a state…"}</option>
+              {states.map((s) => (
+                <option key={s._id} value={s._id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
-            Country *
-            <input value={form.country} onChange={(e) => update("country", e.target.value)} />
+            Province *
+            <select
+              value={form.provinceId}
+              onChange={(e) => update("provinceId", e.target.value)}
+              disabled={!form.stateId}
+            >
+              <option value="">
+                {form.stateId ? "Select a province…" : "Select a state first"}
+              </option>
+              {provinces.map((p) => (
+                <option key={p._id} value={p._id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
           </label>
         </div>
-
-        <label>
-          City
-          <input value={form.city} onChange={(e) => update("city", e.target.value)} />
-        </label>
 
         <div className="location-capture">
           <button type="button" className="btn btn-outline" onClick={captureLocation}>

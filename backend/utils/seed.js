@@ -1,13 +1,12 @@
-'use strict';
 // Demo seed script — populates enough data to make every frontend section
 // non-empty for a live demo. Run with `npm run seed` (from backend/).
 const path = require('path');
 const dotenv = require('dotenv');
-
-
 const mongoose = require("mongoose");
 const connectDB = require("../config/db");
 
+const State = require("../models/State");
+const Province = require("../models/Province");
 const User = require("../models/User");
 const Case = require("../models/Case");
 const UnsafeLocation = require("../models/UnsafeLocation");
@@ -24,15 +23,18 @@ if (result.error) {
   console.log("Dotenv Error:", result.error);
 }
 
+// GovProject/CommunityNeed/Headline/Opinion still use free-text region/country
+// (out of scope for the state/province migration — see README).
 const REGION = "Lagos";
 const COUNTRY = "Nigeria";
-const CITY = "Ikeja";
 
 async function seed() {
   await connectDB();
 
   console.log("[seed] Clearing existing demo collections...");
   await Promise.all([
+    State.deleteMany({}),
+    Province.deleteMany({}),
     User.deleteMany({}),
     Case.deleteMany({}),
     UnsafeLocation.deleteMany({}),
@@ -43,14 +45,20 @@ async function seed() {
     Opinion.deleteMany({}),
   ]);
 
+  console.log("[seed] Creating states + provinces...");
+  const lagosState = await State.create({ name: "Lagos", country: COUNTRY });
+  const ogunState = await State.create({ name: "Ogun", country: COUNTRY });
+
+  const ikeja = await Province.create({ name: "Ikeja", state: lagosState._id });
+  const ikorodu = await Province.create({ name: "Ikorodu", state: lagosState._id });
+  const abeokuta = await Province.create({ name: "Abeokuta", state: ogunState._id });
+
   console.log("[seed] Creating admin + security officials...");
   const admin = await User.create({
     name: process.env.SEED_ADMIN_NAME || "Super Admin",
     email: process.env.SEED_ADMIN_EMAIL || "admin@civivigi.org",
     password: process.env.SEED_ADMIN_PASSWORD || "Admin@12345",
     role: "admin",
-    region: REGION,
-    country: COUNTRY,
   });
 
   const official = await User.create({
@@ -59,33 +67,49 @@ async function seed() {
     password: "Official@12345",
     role: "security_official",
     phone: "+2348000000000",
-    region: REGION,
-    country: COUNTRY,
+    provinces: [ikeja._id, ikorodu._id],
   });
 
-  console.log("[seed] Creating WhatsApp subscription...");
-  await WhatsAppSubscription.create({
-    groupName: "Lagos Neighborhood Watch",
-    groupWhatsAppId: "+2348011111111",
-    region: REGION,
-    country: COUNTRY,
+  const secondOfficial = await User.create({
+    name: "Officer Tunde Fashola",
+    email: "official2@civivigi.org",
+    password: "Official@12345",
+    role: "security_official",
+    phone: "+2348000000001",
+    provinces: [abeokuta._id],
   });
+
+  console.log("[seed] Creating WhatsApp subscriptions...");
+  await WhatsAppSubscription.create([
+    {
+      groupName: "Ikeja Neighborhood Watch",
+      groupWhatsAppId: "+2348011111111",
+      state: lagosState._id,
+      province: ikeja._id,
+    },
+    {
+      groupName: "Lagos State-wide Alerts",
+      groupWhatsAppId: "+2348011111112",
+      state: lagosState._id, // no province -> covers every province in Lagos
+    },
+  ]);
 
   console.log("[seed] Creating cases + unsafe locations...");
   const caseSeeds = [
-    { type: "Robbery", description: "Armed robbery reported near Allen Avenue market.", status: "verified" },
-    { type: "Threat", description: "Anonymous threat made against a local trader.", status: "pending" },
-    { type: "Violence", description: "Physical altercation reported outside a bar on Opebi Road.", status: "verified" },
-    { type: "Abuse", description: "Suspected domestic abuse reported by a neighbor.", status: "pending" },
-    { type: "Kidnapping", description: "Attempted abduction reported near a school gate.", status: "duplicate" },
+    { type: "Robbery", description: "Armed robbery reported near Allen Avenue market.", status: "verified", province: ikeja },
+    { type: "Threat", description: "Anonymous threat made against a local trader.", status: "pending", province: ikeja },
+    { type: "Violence", description: "Physical altercation reported outside a bar on Opebi Road.", status: "verified", province: ikeja },
+    { type: "Abuse", description: "Suspected domestic abuse reported by a neighbor.", status: "pending", province: ikorodu },
+    { type: "Kidnapping", description: "Attempted abduction reported near a school gate.", status: "duplicate", province: ikorodu },
+    { type: "Robbery", description: "Reported break-in at a shop along Lalubu street.", status: "verified", province: abeokuta },
   ];
 
   for (const [i, c] of caseSeeds.entries()) {
+    const { province, ...rest } = c;
     const caseDoc = await Case.create({
-      ...c,
-      region: REGION,
-      country: COUNTRY,
-      city: CITY,
+      ...rest,
+      province: province._id,
+      state: province.state,
       location: { type: "Point", coordinates: [3.3515 + i * 0.01, 6.6018 + i * 0.01] },
       reporter: { name: "Anonymous", channel: i % 2 === 0 ? "web" : "ussd" },
       verifiedBy: c.status === "verified" ? official._id : undefined,
@@ -96,9 +120,8 @@ async function seed() {
     if (c.status !== "duplicate") {
       await UnsafeLocation.create({
         case: caseDoc._id,
-        city: CITY,
-        region: REGION,
-        country: COUNTRY,
+        province: province._id,
+        state: province.state,
         location: caseDoc.location,
         reasonType: caseDoc.type,
         isSafeNow: false,
@@ -212,7 +235,8 @@ async function seed() {
 
   console.log("\n[seed] Done! Demo login credentials:");
   console.log(`  Admin:             ${admin.email} / ${process.env.SEED_ADMIN_PASSWORD || "Admin@12345"}`);
-  console.log(`  Security Official: ${official.email} / Official@12345`);
+  console.log(`  Security Official: ${official.email} / Official@12345 (Ikeja + Ikorodu, Lagos)`);
+  console.log(`  Security Official: ${secondOfficial.email} / Official@12345 (Abeokuta, Ogun)`);
 
   await mongoose.disconnect();
   process.exit(0);

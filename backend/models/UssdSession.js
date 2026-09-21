@@ -8,13 +8,13 @@ const ussdSessionSchema = new mongoose.Schema(
     phoneNumber: { type: String, required: true },
     stage: {
       type: String,
-      enum: ["MAIN_MENU", "AWAIT_TYPE", "AWAIT_REGION", "AWAIT_COUNTRY", "AWAIT_DESCRIPTION", "DONE"],
+      enum: ["MAIN_MENU", "AWAIT_TYPE", "AWAIT_STATE", "AWAIT_PROVINCE", "AWAIT_DESCRIPTION", "DONE"],
       default: "MAIN_MENU",
     },
     data: {
       type: { type: String },
-      region: { type: String },
-      country: { type: String },
+      stateId: { type: mongoose.Schema.Types.ObjectId, ref: "State" },
+      provinceId: { type: mongoose.Schema.Types.ObjectId, ref: "Province" },
       description: { type: String },
     },
   },

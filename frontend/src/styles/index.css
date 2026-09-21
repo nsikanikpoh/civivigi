@@ -761,6 +761,96 @@ a {
   margin-bottom: 28px;
 }
 
+/* ---------- Provinces / geo admin ---------- */
+.hierarchy-list,
+.hierarchy-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.hierarchy-list > li {
+  margin-bottom: 12px;
+}
+
+.hierarchy-list ul {
+  padding-left: 18px;
+  margin-top: 4px;
+}
+
+.hierarchy-list ul li {
+  font-size: 13.5px;
+  color: var(--muted);
+  padding: 2px 0;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label-like {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.checkbox-list {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  font-size: 13.5px;
+  padding-left: 8px;
+}
+
+.badge-province {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #d0e5ff;
+  color: var(--primary-dark);
+  margin: 2px 4px 2px 0;
+  text-transform: none;
+}
+
+.badge-remove {
+  background: none;
+  border: none;
+  color: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 0 0 2px;
+  line-height: 1;
+}
+
+.move-province-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.move-province-row select {
+  font-size: 12.5px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 860px) {
   .nav-toggle {

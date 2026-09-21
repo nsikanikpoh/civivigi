@@ -8,6 +8,7 @@ import ReportIncident from "./pages/ReportIncident.jsx";
 import SignIn from "./pages/SignIn.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import UnsafeLocations from "./pages/UnsafeLocations.jsx";
+import Provinces from "./pages/Provinces.jsx";
 import GovProjects from "./pages/GovProjects.jsx";
 import CommunityNeeds from "./pages/CommunityNeeds.jsx";
 import Headlines from "./pages/Headlines.jsx";
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/report" element={<ReportIncident />} />
           <Route path="/signin" element={<SignIn />} />
           <Route path="/unsafe-locations" element={<UnsafeLocations />} />
+          <Route path="/provinces" element={<Provinces />} />
           <Route path="/gov-projects" element={<GovProjects />} />
           <Route path="/community-needs" element={<CommunityNeeds />} />
           <Route path="/headlines" element={<Headlines />} />

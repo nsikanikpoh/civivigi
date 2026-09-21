@@ -13,21 +13,23 @@ const {
 const { publishVerifiedCase } = require("./socialMediaService");
 
 /**
- * On every new report: find Security Officials covering that
- * region/country and (a) WhatsApp-message them, (b) trigger a WhatsApp/voice
+ * On every new report: find Security Officials assigned to that case's
+ * province and (a) WhatsApp-message them, (b) trigger a WhatsApp/voice
  * call that reads the same message aloud if picked up.
  */
 async function notifyOfficialsOfNewCase(caseDoc) {
+  // `province`/`state` may already be populated (for message formatting) —
+  // always resolve down to a plain id before using them in a query filter.
+  const provinceId = caseDoc.province?._id || caseDoc.province;
   const officials = await User.find({
     role: "security_official",
     isActive: true,
-    region: caseDoc.region,
-    country: caseDoc.country,
+    provinces: provinceId,
   });
 
   if (officials.length === 0) {
     console.warn(
-      `[notify] No active Security Official found for ${caseDoc.region}, ${caseDoc.country}. ` +
+      `[notify] No active Security Official assigned to province ${provinceId}. ` +
         `Case ${caseDoc._id} was still recorded and is visible to all officials in the dashboard.`
     );
     return { officialsNotified: 0 };
@@ -53,12 +55,16 @@ async function notifyOfficialsOfNewCase(caseDoc) {
 
 /**
  * On verification: forward the case to every WhatsApp group subscribed to
- * this region/country, and publish it to Twitter/Facebook/Instagram.
+ * this case's province, or to the whole state it belongs to (a subscription
+ * with no `province` set covers every province in that state), then publish
+ * it to Twitter/Facebook/Instagram.
  */
 async function dispatchVerifiedCase(caseDoc) {
+  const stateId = caseDoc.state?._id || caseDoc.state;
+  const provinceId = caseDoc.province?._id || caseDoc.province;
   const subscriptions = await WhatsAppSubscription.find({
-    region: caseDoc.region,
-    country: caseDoc.country,
+    state: stateId,
+    $or: [{ province: provinceId }, { province: { $exists: false } }, { province: null }],
     isActive: true,
   });
 

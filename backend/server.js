@@ -1,7 +1,4 @@
-'use strict';
-const path = require('path');
-const dotenv = require('dotenv');
-
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
@@ -19,13 +16,7 @@ const communityNeedRoutes = require("./routes/communityNeedRoutes");
 const headlineRoutes = require("./routes/headlineRoutes");
 const opinionRoutes = require("./routes/opinionRoutes");
 const ussdRoutes = require("./routes/ussdRoutes");
-
-// 1. Force dotenv to use an absolute path to the root folder
-const result = dotenv.config({ path: path.resolve(__dirname, '.env') });
-
-if (result.error) {
-  console.log("Dotenv Error:", result.error);
-}
+const geoRoutes = require("./routes/geoRoutes");
 
 const app = express();
 
@@ -50,6 +41,7 @@ app.use("/api/community-needs", communityNeedRoutes);
 app.use("/api/headlines", headlineRoutes);
 app.use("/api/opinions", opinionRoutes);
 app.use("/api/ussd", ussdRoutes);
+app.use("/api", geoRoutes); // exposes /api/states and /api/provinces
 
 app.use(notFound);
 app.use(errorHandler);

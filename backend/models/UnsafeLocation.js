@@ -7,9 +7,10 @@ const unsafeLocationSchema = new mongoose.Schema(
   {
     case: { type: mongoose.Schema.Types.ObjectId, ref: "Case", required: true },
     label: { type: String, trim: true },
-    city: { type: String, trim: true },
-    region: { type: String, trim: true },
-    country: { type: String, trim: true },
+    // Denormalized from the parent Case so this collection can be filtered
+    // by province/state on its own, without populating through `case`.
+    province: { type: mongoose.Schema.Types.ObjectId, ref: "Province" },
+    state: { type: mongoose.Schema.Types.ObjectId, ref: "State" },
     location: {
       type: { type: String, enum: ["Point"], default: "Point" },
       coordinates: { type: [Number], required: true }, // [lng, lat]
@@ -24,6 +25,6 @@ const unsafeLocationSchema = new mongoose.Schema(
 );
 
 unsafeLocationSchema.index({ location: "2dsphere" });
-unsafeLocationSchema.index({ city: 1, isSafeNow: 1 });
+unsafeLocationSchema.index({ province: 1, isSafeNow: 1 });
 
 module.exports = mongoose.model("UnsafeLocation", unsafeLocationSchema);

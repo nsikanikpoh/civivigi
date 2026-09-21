@@ -27,8 +27,8 @@ export default function SignIn() {
   return (
     <div className="page container narrow center-page">
       <div className="card form auth-card">
-        <h2>Security Official Sign In</h2>
-        <p className="muted">Accounts are provisioned by an Administrator.</p>
+        <h1>Official Sign In</h1>
+        <p className="muted">For Security Officials and Admins only. Accounts are provisioned by an Admin.</p>
         <form onSubmit={handleSubmit}>
           <label>
             Email
@@ -44,6 +44,7 @@ export default function SignIn() {
             />
           </label>
           {error && <p className="form-error">{error}</p>}
+          <br/>
           <button className="btn btn-primary btn-lg" type="submit" disabled={submitting}>
             {submitting ? "Signing in…" : "Sign In"}
           </button>

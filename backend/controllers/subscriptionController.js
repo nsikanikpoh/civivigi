@@ -1,25 +1,49 @@
 const asyncHandler = require("../utils/asyncHandler");
 const WhatsAppSubscription = require("../models/WhatsAppSubscription");
+const State = require("../models/State");
+const Province = require("../models/Province");
 
-// POST /api/subscriptions — a WhatsApp group subscribes to a region/country feed. Public.
+// POST /api/subscriptions — a WhatsApp group subscribes to a State's feed,
+// or to one specific Province within it (omit province for the whole state). Public.
 const createSubscription = asyncHandler(async (req, res) => {
-  const { groupName, groupWhatsAppId, region, country } = req.body;
-  if (!groupName || !groupWhatsAppId || !region || !country) {
+  const { groupName, groupWhatsAppId, state, province } = req.body;
+  if (!groupName || !groupWhatsAppId || !state) {
     res.status(400);
-    throw new Error("groupName, groupWhatsAppId, region and country are required");
+    throw new Error("groupName, groupWhatsAppId and state are required");
   }
 
-  const sub = await WhatsAppSubscription.create({ groupName, groupWhatsAppId, region, country });
+  const stateDoc = await State.findById(state);
+  if (!stateDoc) {
+    res.status(400);
+    throw new Error("That state does not exist");
+  }
+  if (province) {
+    const provinceDoc = await Province.findById(province);
+    if (!provinceDoc || String(provinceDoc.state) !== String(state)) {
+      res.status(400);
+      throw new Error("That province does not exist in the given state");
+    }
+  }
+
+  const sub = await WhatsAppSubscription.create({
+    groupName,
+    groupWhatsAppId,
+    state,
+    province: province || undefined,
+  });
   res.status(201).json({ success: true, subscription: sub });
 });
 
 // GET /api/subscriptions — Admin/Security Official view.
 const listSubscriptions = asyncHandler(async (req, res) => {
   const filter = {};
-  if (req.query.region) filter.region = req.query.region;
-  if (req.query.country) filter.country = req.query.country;
+  if (req.query.state) filter.state = req.query.state;
+  if (req.query.province) filter.province = req.query.province;
 
-  const subs = await WhatsAppSubscription.find(filter).sort({ createdAt: -1 });
+  const subs = await WhatsAppSubscription.find(filter)
+    .populate("state", "name")
+    .populate("province", "name")
+    .sort({ createdAt: -1 });
   res.json({ success: true, data: subs });
 });
 

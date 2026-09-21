@@ -5,65 +5,79 @@ import { useAuth } from "../context/AuthContext.jsx";
 
 export default function UnsafeLocations() {
   const { user } = useAuth();
-  const [city, setCity] = useState("");
+  const [states, setStates] = useState([]);
+  const [stateId, setStateId] = useState("");
+  const [provinceId, setProvinceId] = useState("");
   const [locations, setLocations] = useState([]);
   const [pagination, setPagination] = useState(null);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [detecting, setDetecting] = useState(false);
+
+  useEffect(() => {
+    api.get("/states", { params: { withProvinces: true } }).then((res) => setStates(res.data.data));
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get("/locations/unsafe", { params: { city: city || undefined, page, limit: 12 } });
+      const res = await api.get("/locations/unsafe", {
+        params: { state: stateId || undefined, province: provinceId || undefined, page, limit: 12 },
+      });
       setLocations(res.data.data);
       setPagination(res.data.pagination);
     } finally {
       setLoading(false);
     }
-  }, [city, page]);
+  }, [stateId, provinceId, page]);
 
   useEffect(() => {
     load();
   }, [load]);
-
-  function detectCity() {
-    if (!("geolocation" in navigator)) return;
-    setDetecting(true);
-    navigator.geolocation.getCurrentPosition(
-      async () => {
-        // A POC-friendly stand-in: reverse-geocoding needs an external API
-        // key, so we simply prompt for the city name informed by the browser
-        // locale/timezone in a real build. Here we just let the user type it.
-        setDetecting(false);
-      },
-      () => setDetecting(false)
-    );
-  }
 
   async function markSafe(id) {
     await api.patch(`/locations/unsafe/${id}/mark-safe`);
     load();
   }
 
+  const selectedState = states.find((s) => s._id === stateId);
+  const provinces = selectedState?.provinces || [];
+
   return (
     <div className="page container">
-      <h1>📍 Unsafe Areas Near You</h1>
-      <p className="muted">Locations flagged due to reported incidents in your current city.</p>
+      <h1>📍 Unsafe Areas</h1>
+      <p className="muted">Locations flagged due to reported incidents, filterable by state and province.</p>
 
       <div className="filter-row">
-        <input
-          className="text-filter"
-          placeholder="Enter your city…"
-          value={city}
+        <select
+          value={stateId}
           onChange={(e) => {
-            setCity(e.target.value);
+            setStateId(e.target.value);
+            setProvinceId("");
             setPage(1);
           }}
-        />
-        <button className="btn btn-outline" onClick={detectCity} disabled={detecting}>
-          {detecting ? "Detecting…" : "📍 Use my location"}
-        </button>
+        >
+          <option value="">All states</option>
+          {states.map((s) => (
+            <option key={s._id} value={s._id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={provinceId}
+          onChange={(e) => {
+            setProvinceId(e.target.value);
+            setPage(1);
+          }}
+          disabled={!stateId}
+        >
+          <option value="">All provinces</option>
+          {provinces.map((p) => (
+            <option key={p._id} value={p._id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       {loading ? (
@@ -80,7 +94,7 @@ export default function UnsafeLocations() {
                   {loc.isSafeNow ? "Safe now" : "Unsafe"}
                 </span>
               </div>
-              <p>{loc.label || [loc.city, loc.region, loc.country].filter(Boolean).join(", ")}</p>
+              <p>{loc.label || [loc.province?.name, loc.state?.name].filter(Boolean).join(", ")}</p>
               <p className="muted small">Flagged {new Date(loc.flaggedAt).toLocaleString()}</p>
               {!loc.isSafeNow && user && (user.role === "security_official" || user.role === "admin") && (
                 <button className="btn btn-primary btn-sm" onClick={() => markSafe(loc._id)}>

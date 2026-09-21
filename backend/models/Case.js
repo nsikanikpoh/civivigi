@@ -6,16 +6,17 @@ const {
 } = require("../utils/constants");
 
 // A single reported incident. Anybody can create one (no auth), scoped by
-// region/country, and moved through the verification workflow by Security
-// Officials.
+// province (state's own admin-managed hierarchy), and moved through the
+// verification workflow by the Security Officials assigned to that province.
 const caseSchema = new mongoose.Schema(
   {
     type: { type: String, enum: CASE_TYPES, required: true },
     description: { type: String, required: true, trim: true, maxlength: 2000 },
 
-    region: { type: String, required: true, trim: true }, // state/region
-    country: { type: String, required: true, trim: true },
-    city: { type: String, trim: true },
+    province: { type: mongoose.Schema.Types.ObjectId, ref: "Province", required: true },
+    // Denormalized from province.state at creation time so state-level
+    // filtering/ranking never needs a second hop through Province.
+    state: { type: mongoose.Schema.Types.ObjectId, ref: "State", required: true },
 
     location: {
       // GeoJSON point captured from the reporter's device (or approximate
@@ -54,7 +55,8 @@ const caseSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-caseSchema.index({ region: 1, country: 1, status: 1 });
+caseSchema.index({ province: 1, status: 1 });
+caseSchema.index({ state: 1, status: 1 });
 caseSchema.index({ location: "2dsphere" });
 
 module.exports = mongoose.model("Case", caseSchema);

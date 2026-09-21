@@ -2,21 +2,22 @@ const asyncHandler = require("../utils/asyncHandler");
 const UnsafeLocation = require("../models/UnsafeLocation");
 const { getPagination, buildPaginatedResponse } = require("../utils/pagination");
 
-// GET /api/locations/unsafe?city=... — locations in the user's current city
+// GET /api/locations/unsafe?state=&province=&includeSafe= — locations
 // flagged unsafe due to reported incidents (currently-unsafe only, by default).
 const listUnsafeLocations = asyncHandler(async (req, res) => {
-  const { city, region, country, includeSafe } = req.query;
+  const { state, province, includeSafe } = req.query;
   const { page, limit, skip } = getPagination(req.query, { defaultLimit: 20 });
 
   const filter = {};
-  if (city) filter.city = city;
-  if (region) filter.region = region;
-  if (country) filter.country = country;
+  if (state) filter.state = state;
+  if (province) filter.province = province;
   if (includeSafe !== "true") filter.isSafeNow = false;
 
   const [items, total] = await Promise.all([
     UnsafeLocation.find(filter)
       .populate("case", "type description status createdAt")
+      .populate("province", "name")
+      .populate("state", "name")
       .sort({ flaggedAt: -1 })
       .skip(skip)
       .limit(limit),

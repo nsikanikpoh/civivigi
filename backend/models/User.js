@@ -17,8 +17,10 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true, minlength: 6, select: false },
     role: { type: String, enum: USER_ROLES, required: true },
     phone: { type: String, trim: true }, // WhatsApp-reachable number, E.164
-    region: { type: String, trim: true }, // state/region this official covers
-    country: { type: String, trim: true },
+    // The provinces a Security Official is responsible for — they receive
+    // incident alerts for these, and can only manage (verify/mark duplicate/
+    // resolve) cases reported in one of them. Empty/unused for Admins.
+    provinces: [{ type: mongoose.Schema.Types.ObjectId, ref: "Province" }],
     isActive: { type: Boolean, default: true },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // which admin added them
   },

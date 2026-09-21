@@ -4,7 +4,8 @@ import { useAuth } from "../context/AuthContext.jsx";
 
 const links = [
   { to: "/unsafe-locations", label: "Unsafe Areas" },
-  { to: "/gov-projects", label: "Government Projects" },
+  { to: "/provinces", label: "States & Provinces" },
+  { to: "/gov-projects", label: "Govt Projects" },
   { to: "/community-needs", label: "Community Needs" },
   { to: "/headlines", label: "Headlines" },
   { to: "/opinions", label: "Opinions" },
@@ -61,7 +62,7 @@ export default function Navbar() {
             </>
           ) : (
             <Link to="/signin" className="btn btn-outline">
-              Security Official Sign In
+              Sign in
             </Link>
           )}
         </div>

@@ -9,10 +9,17 @@
 //   3. Violence
 //   4. Abuse
 //   5. Threat
-// -> enter region -> enter country -> enter short description -> confirm & submit
+// -> enter state name -> enter province name (within that state) ->
+//    enter short description -> confirm & submit
+//
+// States/Provinces are admin-managed records, not free text, but a USSD
+// caller has no dropdown — so the caller types the name and we resolve it
+// against the real records with a case-insensitive match.
 
 const UssdSession = require("../models/UssdSession");
 const Case = require("../models/Case");
+const State = require("../models/State");
+const Province = require("../models/Province");
 const { USSD_CASE_TYPE_MENU } = require("../utils/constants");
 const { notifyOfficialsOfNewCase } = require("./notifyService");
 
@@ -46,20 +53,33 @@ async function handleUssdRequest({ sessionId, phoneNumber, text }) {
         return "CON Invalid option.\n" + MAIN_MENU_TEXT.replace("CON Welcome to CiviVigi\n", "");
       }
       session.data.type = type;
-      session.stage = "AWAIT_REGION";
+      session.stage = "AWAIT_STATE";
       await session.save();
-      return `CON You selected ${type}.\nEnter your state/region:`;
+      return `CON You selected ${type}.\nEnter your state:`;
     }
 
-    case "AWAIT_REGION": {
-      session.data.region = lastInput.trim();
-      session.stage = "AWAIT_COUNTRY";
+    case "AWAIT_STATE": {
+      const stateDoc = await State.findOne({
+        name: new RegExp(`^${escapeRegex(lastInput.trim())}$`, "i"),
+      });
+      if (!stateDoc) {
+        return `CON We don't recognize that state. Please re-enter your state:`;
+      }
+      session.data.stateId = stateDoc._id;
+      session.stage = "AWAIT_PROVINCE";
       await session.save();
-      return "CON Enter your country:";
+      return `CON Enter your province within ${stateDoc.name}:`;
     }
 
-    case "AWAIT_COUNTRY": {
-      session.data.country = lastInput.trim();
+    case "AWAIT_PROVINCE": {
+      const provinceDoc = await Province.findOne({
+        state: session.data.stateId,
+        name: new RegExp(`^${escapeRegex(lastInput.trim())}$`, "i"),
+      });
+      if (!provinceDoc) {
+        return `CON We don't recognize that province for the selected state. Please re-enter your province:`;
+      }
+      session.data.provinceId = provinceDoc._id;
       session.stage = "AWAIT_DESCRIPTION";
       await session.save();
       return "CON Briefly describe what happened:";
@@ -73,14 +93,18 @@ async function handleUssdRequest({ sessionId, phoneNumber, text }) {
       const caseDoc = await Case.create({
         type: session.data.type,
         description: session.data.description,
-        region: session.data.region,
-        country: session.data.country,
+        province: session.data.provinceId,
+        state: session.data.stateId,
         reporter: { phone: phoneNumber, channel: "ussd" },
       });
 
-      notifyOfficialsOfNewCase(caseDoc).catch((err) =>
-        console.error("[ussd] Failed to notify officials:", err)
-      );
+      caseDoc
+        .populate([
+          { path: "province", select: "name" },
+          { path: "state", select: "name" },
+        ])
+        .then(() => notifyOfficialsOfNewCase(caseDoc))
+        .catch((err) => console.error("[ussd] Failed to notify officials:", err));
 
       return `END Thank you. Your ${caseDoc.type} report has been submitted.\nReference: ${caseDoc._id.toString().slice(-6).toUpperCase()}\nSecurity officials in your area have been alerted.`;
     }
@@ -88,6 +112,10 @@ async function handleUssdRequest({ sessionId, phoneNumber, text }) {
     default:
       return "END Session expired. Please dial again to submit your report.";
   }
+}
+
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 module.exports = { handleUssdRequest, MAIN_MENU_TEXT };

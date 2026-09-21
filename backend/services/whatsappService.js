@@ -85,10 +85,14 @@ async function broadcastCaseToSubscriptions(subscriptions, caseDoc) {
 }
 
 function formatCaseAlert(caseDoc) {
+  // Expects `province`/`state` to be populated (name) where possible; falls
+  // back to the raw id if a caller passes an unpopulated case doc.
+  const provinceName = caseDoc.province?.name || String(caseDoc.province || "");
+  const stateName = caseDoc.state?.name || String(caseDoc.state || "");
   return (
     `🚨 CiviVigi Verified Alert 🚨\n` +
     `Type: ${caseDoc.type}\n` +
-    `Location: ${[caseDoc.city, caseDoc.region, caseDoc.country].filter(Boolean).join(", ")}\n` +
+    `Location: ${[provinceName, stateName].filter(Boolean).join(", ")}\n` +
     `Details: ${caseDoc.description}\n` +
     `Reported via: ${caseDoc.reporter?.channel || "web"}\n` +
     `Case ID: ${caseDoc._id}`
